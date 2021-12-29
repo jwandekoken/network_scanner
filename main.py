@@ -1,19 +1,35 @@
 import scapy.all as scapy
+import argparse
+
+
+def get_arguments():
+    parser = argparse.ArgumentParser(description='Scan a network.')
+    parser.add_argument('-t', '--target', dest='target', help='Target IP / IP range.')
+    options = parser.parse_args()
+    if not options.target:
+        parser.error("[-] Please specify a target, use --help for more info.")
+    return options
 
 
 def scan(ip):
     arp_request = scapy.ARP(pdst=ip)
-    # create a ethernet object with the address set to the broadcast MAC
     broadcast = scapy.Ether(dst="ff:ff:ff:ff:ff:ff")
-    # append the arp_request to the broacast, creating a new package
     arp_request_broadcast = broadcast/arp_request
-    # send and receive the response
-    # see that we are not specifying the address here, the srp fn knows the address because we added a ethernet layer and we have setted a MAC address (the broadcast MAC) there
     answered_list = scapy.srp(arp_request_broadcast, timeout=1, verbose=False)[0]
     
-    print("IP\t\t\tMAC Address")
+    clients_list = []
     for element in answered_list:
-        print(element[1].psrc + "\t\t" + element[1].hwsrc)
+        client_dict = {"ip": element[1].psrc, "mac": element[1].hwsrc}
+        clients_list.append(client_dict)
+    return clients_list
+        
 
+def print_result(results_list):
+    print("IP\t\t\tMAC Address")
+    for client in results_list:
+        print(client["ip"] + "\t\t" + client["mac"])
+        
 
-scan("172.16.239.1/24")
+opts = get_arguments()
+scan_result = scan(opts.target)
+print_result(scan_result)
